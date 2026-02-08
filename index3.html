@@ -2,45 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Reflex Click</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body{
-  margin:0;
-  background:#111;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-}
-#game{
-  position:relative;
-  width:100vw;
-  height:70vh;
-  border:2px solid white;
-  overflow:hidden;
-  margin-top:20px;
-}
-.target{
-  position:absolute;
-  width:60px;
-  height:60px;
-  /* Se vuoi mantenere il cerchio: */
-  border-radius:50%;
-  cursor:pointer;
-}
-#info{
-  margin-top:10px;
-  font-size:22px;
-}
-button{
-  padding:10px 25px;
-  font-size:18px;
-}
-</style>
-</head>
-<body>
-
 <h1>🎯 Reflex Click</h1>
+
+<!-- Dropdown per il nome -->
+<select id="playerName">
+  <option value="">Scegli il tuo nome</option>
+  <option value="Alice">Alice</option>
+  <option value="Bob">Bob</option>
+  <option value="Charlie">Charlie</option>
+  <option value="Diana">Diana</option>
+</select>
+
 <button onclick="startGame()">START</button>
 <div id="info">Punteggio: 0 | Tempo: 30</div>
 <div id="game"></div>
@@ -57,15 +29,26 @@ let gameInterval;
 let spawnInterval;
 
 function startGame(){
+  const nameSelect = document.getElementById("playerName");
+  const playerName = nameSelect.value;
+  if(!playerName){
+    alert("Seleziona un nome prima di iniziare!");
+    return;
+  }
+
   score = 0;
   timeLeft = 30;
   updateInfo();
+
+  // Disabilita dropdown e bottone durante il gioco
+  nameSelect.disabled = true;
+  document.querySelector("button").disabled = true;
 
   // Timer principale
   gameInterval = setInterval(()=>{
     timeLeft--;
     updateInfo();
-    if(timeLeft <= 0) endGame();
+    if(timeLeft <= 0) endGame(playerName);
   },1000);
 
   // Generazione bersagli
@@ -87,7 +70,7 @@ function spawnTarget(){
 
   if(isGood){
     // Qui inserisci il link della tua immagine
-    target.style.backgroundImage = "url('LINK_DELLA_TUA_IMMAGINE')"; 
+    target.style.backgroundImage = "url('https://www.rai.it/dl/img/2020/05/05/1600x900_1588676053132_carlo%20conti.jpg')"; 
     target.style.backgroundSize = "cover";
     target.style.backgroundPosition = "center";
     target.style.backgroundRepeat = "no-repeat";

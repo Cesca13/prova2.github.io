@@ -56,24 +56,33 @@ button, select{
 ----------------------------*/
 @media (max-width: 600px) {
   body {
-    font-size: 18px; /* testi più grandi su cellulare */
+    font-size: 18px; 
   }
 
   h1 {
-    font-size: 28px; /* titolo più leggibile */
+    font-size: 28px; 
   }
 
   #info {
-    font-size: 24px; /* info più leggibile */
+    font-size: 24px; 
   }
 
   select, button {
-    font-size: 20px;         /* testo più grande */
-    padding: 15px 35px;      /* area cliccabile più grande */
-    min-width: 150px;        /* larghezza minima per la dropdown */
-    border-radius: 8px;      /* bordi più visibili */
+    font-size: 20px;         
+    padding: 15px 35px;      
+    min-width: 180px;        /* forzata larghezza minima */
+    height: 50px;             /* altezza maggiore */
+    border-radius: 8px;      
+    appearance: none;         /* rimuove lo stile default del browser */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  select {
+    text-align: center;      /* testo centrato nella dropdown */
   }
 }
+
 
 </style>
 </head>

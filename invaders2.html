@@ -22,7 +22,7 @@ body{
   border:2px solid white;
   background:#6f6d6d;
   overflow:hidden;
-  touch-action: none;
+  touch-action: none; /* per drag su mobile */
 }
 
 .player{
@@ -30,8 +30,8 @@ body{
   bottom:80px;
   left:50%;
   transform:translateX(-50%);
-  width:80px;   /* più grande */
-  height:80px;  /* più grande */
+  width:90px;  /* più grande */
+  height:90px; /* più grande */
   border-radius:10px;
   overflow:hidden;
 }
@@ -45,13 +45,13 @@ body{
 
 .bullet {
   position: absolute;
-  font-size: 36px;   /* più grande */
+  font-size: 36px;   /* missile più grande */
   user-select: none;
 }
 
 .enemy {
-  width:70px;   /* più grande */
-  height:70px;  /* più grande */
+  width:80px;  /* nemici più grandi */
+  height:80px;
   background-size: contain;
   background-repeat: no-repeat;
   position:absolute;
@@ -68,12 +68,14 @@ button, select{
   margin:5px;
 }
 
+/* Touch controls */
 #controls{
   position:fixed;
   bottom:10px;
   width:100%;
   display:flex;
   justify-content:center;
+  gap:20px;
 }
 
 .control-btn{
@@ -87,6 +89,7 @@ button, select{
   touch-action: manipulation;
 }
 
+/* Mobile responsive */
 @media (max-width:600px){
   #info{ font-size:24px; }
   select, button{ font-size:20px; padding:15px 35px; min-width:180px; height:50px; }
@@ -131,15 +134,12 @@ const TARGET_SCORE = 100;
 let player, game;
 let playerDragging = false;
 
+// Nemici casuali
 const enemySprites = [
   'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif',
   'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/alien1.png',
   'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/alien2.png'
 ];
-
-let spawnDelay = 800;
-let enemySpeed = 4;
-let enemiesPerSpawn = 1;
 
 function startGame(){
   const nameSelect = document.getElementById("playerName");
@@ -156,6 +156,7 @@ function startGame(){
   game = document.getElementById("game");
   game.innerHTML = "";
 
+  // crea player
   player = document.createElement("div");
   player.classList.add("player");
   const img = document.createElement("img");
@@ -163,105 +164,114 @@ function startGame(){
   player.appendChild(img);
   game.appendChild(player);
 
-  spawnInterval = setInterval(dynamicSpawn, spawnDelay);
-  requestAnimationFrame(gameLoop);
+  // spawn nemici continuo
+  spawnInterval = setInterval(spawnEnemy, 600);
 
-  // Drag del player
-  game.addEventListener("pointerdown", e => {
-    if(e.target === player) playerDragging = true;
+  // drag del player
+  game.addEventListener("pointerdown", e=>{
+    const rect = player.getBoundingClientRect();
+    if(e.clientX >= rect.left && e.clientX <= rect.right &&
+       e.clientY >= rect.top && e.clientY <= rect.bottom){
+         playerDragging = true;
+       }
   });
-  game.addEventListener("pointermove", e => {
+
+  game.addEventListener("pointermove", e=>{
     if(playerDragging){
-      let rect = game.getBoundingClientRect();
+      const rect = game.getBoundingClientRect();
       let newX = e.clientX - rect.left - player.offsetWidth/2;
       newX = Math.max(0, Math.min(game.clientWidth - player.offsetWidth, newX));
       player.style.left = newX + "px";
     }
   });
+
   game.addEventListener("pointerup", ()=>playerDragging=false);
   game.addEventListener("pointerleave", ()=>playerDragging=false);
 
+  // pulsante fuoco
   document.getElementById("fire-btn").addEventListener("pointerdown", fireBullet);
+
+  // loop di gioco
+  requestAnimationFrame(gameLoop);
 }
 
 function updateInfo(){
   document.getElementById("info").innerText = `Punteggio: ${score} | Obiettivo: ${TARGET_SCORE}`;
 }
 
-function dynamicSpawn(){
-  for(let i=0; i<enemiesPerSpawn; i++) spawnEnemy();
-
-  if(score >= 70 && score < 90){
-    spawnDelay = 500; enemySpeed = 6; enemiesPerSpawn = 2;
-  } else if(score >= 90){
-    spawnDelay = 300; enemySpeed = 8; enemiesPerSpawn = 3;
-  }
-
-  clearInterval(spawnInterval);
-  spawnInterval = setInterval(dynamicSpawn, spawnDelay);
-}
-
+// spawn nemici
 function spawnEnemy(){
   const enemy = document.createElement("div");
   enemy.classList.add("enemy");
   const sprite = enemySprites[Math.floor(Math.random() * enemySprites.length)];
   enemy.style.backgroundImage = `url('${sprite}')`;
-  enemy.style.left = Math.random() * (game.clientWidth - 70) + "px";
-  enemy.style.top = "-70px";
+  enemy.style.left = Math.random() * (game.clientWidth - 80) + "px";
+  enemy.style.top = "-80px";
   game.appendChild(enemy);
   enemies.push(enemy);
+
+  // aumenta difficoltà oltre 70 punti
+  if(score >= 70){
+    enemy.style.top = "-40px";
+    enemy.style.height = "100px";
+    enemy.style.width = "100px";
+  }
 }
 
 function fireBullet(){
   const bullet = document.createElement("div");
   bullet.classList.add("bullet");
   bullet.innerText = "🚀";
-
-  const playerLeft = parseFloat(player.style.left) || (game.clientWidth/2 - 40);
+  const playerLeft = parseFloat(player.style.left) || (game.clientWidth/2 - 45);
   bullet.style.left = playerLeft + player.offsetWidth/2 - 18 + "px";
-
   const playerTop = game.clientHeight - 80 - player.offsetHeight;
   bullet.style.top = playerTop + "px";
-
   game.appendChild(bullet);
   bullets.push(bullet);
 }
 
 function gameLoop(){
-  enemies.forEach((enemy, i) => {
-    let top = parseFloat(enemy.style.top);
-    enemy.style.top = top + enemySpeed + "px";
+  const step = 10;
+  let left = parseFloat(player.style.left) || (game.clientWidth/2 - 45);
+  player.style.left = left + "px";
 
+  // nemici
+  enemies.forEach((enemy,i)=>{
+    let top = parseFloat(enemy.style.top);
+    enemy.style.top = top + 5 + "px";
+
+    // collisione con player
     const eRect = enemy.getBoundingClientRect();
     const pRect = player.getBoundingClientRect();
     if(!(eRect.right < pRect.left || eRect.left > pRect.right || eRect.bottom < pRect.top || eRect.top > pRect.bottom)){
-        score -= 15;
-        updateInfo();
-        enemy.remove();
-        enemies.splice(i, 1);
+      score -= 15;
+      updateInfo();
+      enemy.remove();
+      enemies.splice(i,1);
     }
   });
 
-  bullets.forEach((bullet, i) => {
+  // proiettili
+  bullets.forEach((bullet,i)=>{
     let top = parseFloat(bullet.style.top);
-    bullet.style.top = top - 12 + "px";
+    bullet.style.top = top - 15 + "px";
 
-    enemies.forEach((enemy, j) => {
+    enemies.forEach((enemy,j)=>{
       const eRect = enemy.getBoundingClientRect();
       const bRect = bullet.getBoundingClientRect();
       if(!(bRect.right < eRect.left || bRect.left > eRect.right || bRect.bottom < eRect.top || bRect.top > eRect.bottom)){
-          score += 5;
-          updateInfo();
-          enemy.remove();
-          bullet.remove();
-          enemies.splice(j, 1);
-          bullets.splice(i, 1);
+        score += 5;
+        updateInfo();
+        enemy.remove();
+        bullet.remove();
+        enemies.splice(j,1);
+        bullets.splice(i,1);
       }
     });
 
     if(top < -20){
       bullet.remove();
-      bullets.splice(i, 1);
+      bullets.splice(i,1);
     }
   });
 

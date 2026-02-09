@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Mini Chicken Invaders Frenzy</title>
+<title>Mini Chicken Invaders Mobile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{
@@ -12,7 +12,6 @@ body{
   font-family:Arial;
   text-align:center;
   overflow:hidden;
-  user-select:none;
 }
 
 #game{
@@ -27,11 +26,11 @@ body{
 
 .player{
   position:absolute;
-  bottom:100px;
+  bottom:80px;
   left:50%;
   transform:translateX(-50%);
-  width:100px;
-  height:100px;
+  width:80px;
+  height:80px;
   border-radius:10px;
   overflow:hidden;
 }
@@ -43,28 +42,29 @@ body{
   border-radius:10px;
 }
 
-.bullet{
-  position:absolute;
-  font-size:36px;
-  user-select:none;
+.bullet {
+  position: absolute;
+  font-size: 32px;
+  user-select: none;
 }
 
-.enemy{
-  width:80px;
-  height:80px;
-  background-size:contain;
-  background-repeat:no-repeat;
+.enemy {
+  width:70px;
+  height:70px;
+  background-image: url('https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
   position:absolute;
 }
 
 #info{
   margin-top:10px;
-  font-size:26px;
+  font-size:22px;
 }
 
 button, select{
-  padding:12px 30px;
-  font-size:20px;
+  padding:10px 25px;
+  font-size:18px;
   margin:5px;
 }
 
@@ -76,6 +76,7 @@ button, select{
   display:flex;
   justify-content:center;
   gap:40px;
+  pointer-events:none; /* per prevenire selezioni esterne */
 }
 
 .control-btn{
@@ -87,18 +88,22 @@ button, select{
   color:white;
   border:none;
   touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  pointer-events:auto; /* riattiva i pulsanti */
 }
 
-@media(max-width:600px){
+/* Mobile responsive */
+@media (max-width:600px){
   #info{ font-size:24px; }
   select, button{ font-size:20px; padding:15px 35px; min-width:180px; height:50px; }
-  .control-btn{ width:90px; height:90px; font-size:32px; }
 }
 </style>
 </head>
 <body>
 
-<h1>🚀 Mini Chicken Invaders Frenzy</h1>
+<h1>🚀 Mini Chicken Invaders</h1>
 
 <select id="playerName">
   <option value="">Scegli il tuo nome</option>
@@ -131,18 +136,16 @@ let spawnInterval;
 let bullets = [];
 let enemies = [];
 let currentPlayerName = "";
-let enemySpeed = 4;
-let enemySpawnRate = 800; // intervallo iniziale spawn
 const TARGET_SCORE = 100;
 
 let player, game;
-let moveLeft=false, moveRight=false;
+let moveLeft = false, moveRight = false;
+let frenzyMode = false;
+let enemySpeed = 4;
 
-// immagini nemici
+// Array immagini nemici
 const enemySprites = [
-  'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif',
-  'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/alien1.png',
-  'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/alien2.png'
+  'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif'
 ];
 
 function startGame(){
@@ -151,20 +154,18 @@ function startGame(){
   if(!currentPlayerName){ alert("Seleziona un nome!"); return; }
 
   score = 0;
-  bullets = [];
-  enemies = [];
-  enemySpeed = 4;
-  enemySpawnRate = 800;
   updateInfo();
   startTime = performance.now();
+  frenzyMode = false;
+  enemySpeed = 4;
 
   nameSelect.disabled = true;
   document.querySelector("button").disabled = true;
 
   game = document.getElementById("game");
-  game.innerHTML="";
+  game.innerHTML = "";
 
-  // player
+  // crea player con immagine
   player = document.createElement("div");
   player.classList.add("player");
   const img = document.createElement("img");
@@ -172,15 +173,27 @@ function startGame(){
   player.appendChild(img);
   game.appendChild(player);
 
-  spawnInterval = setInterval(spawnEnemy, enemySpawnRate);
+  // spawn nemici
+  spawnInterval = setInterval(spawnEnemy, 800);
 
+  // movimento player
   requestAnimationFrame(gameLoop);
 
-  document.getElementById("left-btn").addEventListener("pointerdown", ()=>moveLeft=true);
-  document.getElementById("left-btn").addEventListener("pointerup", ()=>moveLeft=false);
-  document.getElementById("right-btn").addEventListener("pointerdown", ()=>moveRight=true);
-  document.getElementById("right-btn").addEventListener("pointerup", ()=>moveRight=false);
-  document.getElementById("fire-btn").addEventListener("pointerdown", fireBullet);
+  // controlli touch
+  const leftBtn = document.getElementById("left-btn");
+  const rightBtn = document.getElementById("right-btn");
+  const fireBtn = document.getElementById("fire-btn");
+
+  leftBtn.addEventListener("pointerdown", ()=>moveLeft=true);
+  leftBtn.addEventListener("pointerup", ()=>moveLeft=false);
+  rightBtn.addEventListener("pointerdown", ()=>moveRight=true);
+  rightBtn.addEventListener("pointerup", ()=>moveRight=false);
+  fireBtn.addEventListener("pointerdown", fireBullet);
+
+  // movimento touch player
+  game.addEventListener("pointerdown", startDrag);
+  game.addEventListener("pointermove", dragPlayer);
+  game.addEventListener("pointerup", endDrag);
 }
 
 function updateInfo(){
@@ -190,9 +203,10 @@ function updateInfo(){
 function spawnEnemy(){
   const enemy = document.createElement("div");
   enemy.classList.add("enemy");
-  enemy.style.left = Math.random() * (game.clientWidth - 80) + "px";
-  enemy.style.top = "-80px";
-  enemy.style.backgroundImage = `url('${enemySprites[Math.floor(Math.random()*enemySprites.length)]}')`;
+  const sprite = enemySprites[0]; // solo uno
+  enemy.style.backgroundImage = `url('${sprite}')`;
+  enemy.style.left = Math.random() * (game.clientWidth - 70) + "px";
+  enemy.style.top = "-70px";
   game.appendChild(enemy);
   enemies.push(enemy);
 }
@@ -200,72 +214,88 @@ function spawnEnemy(){
 function fireBullet(){
   const bullet = document.createElement("div");
   bullet.classList.add("bullet");
-  bullet.innerText="🚀";
-  const playerLeft = parseFloat(player.style.left)||(game.clientWidth/2 -50);
-  bullet.style.left = playerLeft + player.offsetWidth/2 - 18 + "px";
-  bullet.style.top = game.clientHeight - 100 - player.offsetHeight + "px";
+  bullet.innerText = "🚀";
+
+  const playerLeft = parseFloat(player.style.left) || (game.clientWidth/2 - 40);
+  bullet.style.left = playerLeft + player.offsetWidth/2 - 16 + "px";
+
+  const playerTop = game.clientHeight - 80 - player.offsetHeight;
+  bullet.style.top = playerTop + "px";
+
   game.appendChild(bullet);
   bullets.push(bullet);
 }
 
+// Drag player
+let dragging = false;
+function startDrag(e){ dragging = true; dragPlayer(e); }
+function dragPlayer(e){ 
+  if(!dragging) return;
+  let x = e.clientX - player.offsetWidth/2;
+  x = Math.max(0, Math.min(game.clientWidth - player.offsetWidth, x));
+  player.style.left = x + "px";
+}
+function endDrag(){ dragging = false; }
+
 function gameLoop(){
-  const step=10;
-  let left=parseFloat(player.style.left)||(game.clientWidth/2 -50);
-  if(moveLeft) left-=step;
-  if(moveRight) left+=step;
-  left=Math.max(0, Math.min(game.clientWidth - player.offsetWidth,left));
-  player.style.left=left+"px";
+  // movimento player con frecce
+  const step = 10;
+  let left = parseFloat(player.style.left) || (game.clientWidth/2 - 40);
+  if(moveLeft) left -= step;
+  if(moveRight) left += step;
+  left = Math.max(0, Math.min(game.clientWidth - player.offsetWidth, left));
+  player.style.left = left + "px";
+
+  // Frenzy mode
+  if(score >= 70 && !frenzyMode){
+    frenzyMode = true;
+    enemySpeed = 7;
+    clearInterval(spawnInterval);
+    spawnInterval = setInterval(spawnEnemy, 300);
+  }
 
   // nemici
-  enemies.forEach((e,i)=>{
-    let top=parseFloat(e.style.top);
-    e.style.top = top + enemySpeed + "px";
+  enemies.forEach((enemy,i)=>{
+    let top = parseFloat(enemy.style.top);
+    enemy.style.top = top + enemySpeed + "px";
 
-    const eRect=e.getBoundingClientRect();
-    const pRect=player.getBoundingClientRect();
+    const eRect = enemy.getBoundingClientRect();
+    const pRect = player.getBoundingClientRect();
     if(!(eRect.right < pRect.left || eRect.left > pRect.right || eRect.bottom < pRect.top || eRect.top > pRect.bottom)){
-      score-=15;
+      score -= 15;
       updateInfo();
-      e.remove();
+      enemy.remove();
       enemies.splice(i,1);
     }
-
     if(top > game.clientHeight){
-      e.remove();
+      enemy.remove();
       enemies.splice(i,1);
     }
   });
 
   // proiettili
-  bullets.forEach((b,i)=>{
-    let top=parseFloat(b.style.top);
-    b.style.top = top -12 +"px";
+  bullets.forEach((bullet,i)=>{
+    let top = parseFloat(bullet.style.top);
+    bullet.style.top = top - 12 + "px";
 
-    enemies.forEach((e,j)=>{
-      const eRect=e.getBoundingClientRect();
-      const bRect=b.getBoundingClientRect();
+    enemies.forEach((enemy,j)=>{
+      const eRect = enemy.getBoundingClientRect();
+      const bRect = bullet.getBoundingClientRect();
       if(!(bRect.right < eRect.left || bRect.left > eRect.right || bRect.bottom < eRect.top || bRect.top > eRect.bottom)){
-        score+=10;
+        score += 10;
         updateInfo();
-        e.remove();
-        b.remove();
+        enemy.remove();
+        bullet.remove();
         enemies.splice(j,1);
         bullets.splice(i,1);
       }
     });
 
-    if(top < -40){
-      b.remove();
+    if(top < -20){
+      bullet.remove();
       bullets.splice(i,1);
     }
   });
-
-  // aumenta difficoltà oltre 70 punti
-  if(score >=70){
-    enemySpeed=7;
-    clearInterval(spawnInterval);
-    spawnInterval=setInterval(spawnEnemy, 400);
-  }
 
   if(score >= TARGET_SCORE){
     endGame();
@@ -277,7 +307,7 @@ function gameLoop(){
 
 async function endGame(){
   clearInterval(spawnInterval);
-  const timeElapsed=(performance.now()-startTime)/1000;
+  const timeElapsed = (performance.now() - startTime)/1000;
 
   await supabaseClient.from("invaders").insert({
     name: currentPlayerName,
@@ -286,13 +316,15 @@ async function endGame(){
 
   alert(`Fine! Hai impiegato ${timeElapsed.toFixed(2)} secondi 🫶🏻`);
 
-  const nameSelect=document.getElementById("playerName");
-  nameSelect.disabled=false;
-  document.querySelector("button").disabled=false;
+  const nameSelect = document.getElementById("playerName");
+  nameSelect.disabled = false;
+  document.querySelector("button").disabled = false;
 
-  game.innerHTML="";
-  bullets=[];
-  enemies=[];
+  game.innerHTML = "";
+  bullets = [];
+  enemies = [];
+  frenzyMode = false;
+  enemySpeed = 4;
   updateInfo();
 }
 </script>

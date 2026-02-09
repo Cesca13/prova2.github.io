@@ -71,28 +71,40 @@ button, select{
 /* Touch controls */
 #controls{
   position:fixed;
-  bottom:10px;
+  bottom:20px;
+  left:0;
   width:100%;
   display:flex;
-  justify-content:center;
-  gap:40px;
-  pointer-events:none; /* per prevenire selezioni esterne */
+  justify-content:space-between; /* li porta agli estremi */
+  align-items:center;
+  padding:0 25px;
+  box-sizing:border-box;
+  pointer-events:none;
 }
 
 .control-btn{
-  width:100px;
-  height:100px;
-  font-size:36px;
+  width:130px;          /* MOLTO più grandi */
+  height:130px;
+  font-size:48px;
   border-radius:50%;
-  background:#333;
+  background:#222;
   color:white;
-  border:none;
+  border:3px solid white;
   touch-action:none;
   user-select:none;
   -webkit-user-select:none;
   -moz-user-select:none;
-  pointer-events:auto; /* riattiva i pulsanti */
+  pointer-events:auto;
 }
+
+/* bottone fuoco al centro */
+#fire-btn{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:0;
+}
+
 
 /* Mobile responsive */
 @media (max-width:600px){

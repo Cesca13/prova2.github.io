@@ -21,13 +21,11 @@ body{
   margin-top:10px;
   border:2px solid white;
   overflow:hidden;
-
   background-image: url('https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/invaders_sfondo.png');
-  background-size: cover;        /* riempie tutto */
-  background-position: center;   /* centrata */
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
 }
-
 
 .player{
   position:absolute;
@@ -80,7 +78,7 @@ button, select{
   left:0;
   width:100%;
   display:flex;
-  justify-content:space-between; /* li porta agli estremi */
+  justify-content:space-between;
   align-items:center;
   padding:0 25px;
   box-sizing:border-box;
@@ -88,7 +86,7 @@ button, select{
 }
 
 .control-btn{
-  width:130px;          /* MOLTO più grandi */
+  width:130px;
   height:130px;
   font-size:48px;
   border-radius:50%;
@@ -97,8 +95,6 @@ button, select{
   border:3px solid white;
   touch-action:none;
   user-select:none;
-  -webkit-user-select:none;
-  -moz-user-select:none;
   pointer-events:auto;
 }
 
@@ -110,8 +106,6 @@ button, select{
   bottom:0;
 }
 
-
-/* Mobile responsive */
 @media (max-width:600px){
   #info{ font-size:24px; }
   select, button{ font-size:20px; padding:15px 35px; min-width:180px; height:50px; }
@@ -123,11 +117,7 @@ button, select{
 <h1>🚀 Morgan Invaders 🚀</h1>
 
 <select id="playerName">
-  <option value="">Scegli il tuo nome</option>
-  <option>Alice</option>
-  <option>Bob</option>
-  <option>Charlie</option>
-  <option>Diana</option>
+  <option value="">Caricamento nomi...</option>
 </select>
 
 <button onclick="startGame()">START</button>
@@ -152,7 +142,7 @@ let startTime;
 let spawnInterval;
 let bullets = [];
 let enemies = [];
-let currentPlayerName = "";
+let currentPlayerId = null;
 const TARGET_SCORE = 100;
 
 let player, game;
@@ -160,29 +150,67 @@ let moveLeft = false, moveRight = false;
 let frenzyMode = false;
 let enemySpeed = 4;
 
-// Array immagini nemici
-const enemySprites = [
-  'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif'
-];
+const enemySprites = ['https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/morgan.gif'];
 
-function startGame(){
+// --- Carica nomi disponibili dalla tabella ---
+async function loadPlayerNames(){
+  const select = document.getElementById("playerName");
+  select.innerHTML = '<option value="">Scegli il tuo nome</option>';
+
+  const { data: players, error } = await supabaseClient
+    .from('players')
+    .select('id, name')
+    .is('MorganInvaders', null);
+
+  if(error){
+    console.error(error);
+    select.innerHTML = '<option value="">Errore caricamento</option>';
+    return;
+  }
+
+  players.forEach(p=>{
+    const option = document.createElement('option');
+    option.value = p.id;
+    option.textContent = p.name;
+    select.appendChild(option);
+  });
+}
+
+// --- START GAME ---
+async function startGame(){
   const nameSelect = document.getElementById("playerName");
-  currentPlayerName = nameSelect.value;
-  if(!currentPlayerName){ alert("Seleziona un nome!"); return; }
+  currentPlayerId = nameSelect.value;
+  if(!currentPlayerId){ alert("Seleziona un nome!"); return; }
 
+  // aggiorna colonna MorganInvaders con data/ora corrente
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseClient
+    .from('players')
+    .update({ MorganInvaders: now })
+    .eq('id', currentPlayerId);
+
+  if(error){
+    console.error("Errore aggiornando il record:", error);
+    return;
+  }
+
+  // rimuove il nome dalla dropdown
+  const option = nameSelect.querySelector(`option[value="${currentPlayerId}"]`);
+  if(option) option.remove();
+  nameSelect.disabled = true;
+  document.querySelector("button").disabled = true;
+
+  // reset game
   score = 0;
   updateInfo();
   startTime = performance.now();
   frenzyMode = false;
   enemySpeed = 4;
 
-  nameSelect.disabled = true;
-  document.querySelector("button").disabled = true;
-
   game = document.getElementById("game");
   game.innerHTML = "";
 
-  // crea player con immagine
+  // crea player
   player = document.createElement("div");
   player.classList.add("player");
   const img = document.createElement("img");
@@ -190,13 +218,10 @@ function startGame(){
   player.appendChild(img);
   game.appendChild(player);
 
-  // spawn nemici
   spawnInterval = setInterval(spawnEnemy, 800);
-
-  // movimento player
   requestAnimationFrame(gameLoop);
 
-  // controlli touch
+  // touch controls
   const leftBtn = document.getElementById("left-btn");
   const rightBtn = document.getElementById("right-btn");
   const fireBtn = document.getElementById("fire-btn");
@@ -207,27 +232,28 @@ function startGame(){
   rightBtn.addEventListener("pointerup", ()=>moveRight=false);
   fireBtn.addEventListener("pointerdown", fireBullet);
 
-  // movimento touch player
   game.addEventListener("pointerdown", startDrag);
   game.addEventListener("pointermove", dragPlayer);
   game.addEventListener("pointerup", endDrag);
 }
 
+// --- Update punteggio ---
 function updateInfo(){
   document.getElementById("info").innerText = `Punteggio: ${score} | Obiettivo: ${TARGET_SCORE}`;
 }
 
+// --- Spawn nemici ---
 function spawnEnemy(){
   const enemy = document.createElement("div");
   enemy.classList.add("enemy");
-  const sprite = enemySprites[0]; // solo uno
-  enemy.style.backgroundImage = `url('${sprite}')`;
-  enemy.style.left = Math.random() * (game.clientWidth - 70) + "px";
+  enemy.style.backgroundImage = `url('${enemySprites[0]}')`;
+  enemy.style.left = Math.random()*(game.clientWidth-70) + "px";
   enemy.style.top = "-70px";
   game.appendChild(enemy);
   enemies.push(enemy);
 }
 
+// --- Fire bullet ---
 function fireBullet(){
   const bullet = document.createElement("div");
   bullet.classList.add("bullet");
@@ -235,18 +261,16 @@ function fireBullet(){
 
   const playerLeft = parseFloat(player.style.left) || (game.clientWidth/2 - 40);
   bullet.style.left = playerLeft + player.offsetWidth/2 - 16 + "px";
-
-  const playerTop = game.clientHeight - 80 - player.offsetHeight;
-  bullet.style.top = playerTop + "px";
+  bullet.style.top = game.clientHeight - 80 - player.offsetHeight + "px";
 
   game.appendChild(bullet);
   bullets.push(bullet);
 }
 
-// Drag player
+// --- Drag player ---
 let dragging = false;
 function startDrag(e){ dragging = true; dragPlayer(e); }
-function dragPlayer(e){ 
+function dragPlayer(e){
   if(!dragging) return;
   let x = e.clientX - player.offsetWidth/2;
   x = Math.max(0, Math.min(game.clientWidth - player.offsetWidth, x));
@@ -254,8 +278,8 @@ function dragPlayer(e){
 }
 function endDrag(){ dragging = false; }
 
+// --- Game loop ---
 function gameLoop(){
-  // movimento player con frecce
   const step = 10;
   let left = parseFloat(player.style.left) || (game.clientWidth/2 - 40);
   if(moveLeft) left -= step;
@@ -263,7 +287,6 @@ function gameLoop(){
   left = Math.max(0, Math.min(game.clientWidth - player.offsetWidth, left));
   player.style.left = left + "px";
 
-  // Frenzy mode
   if(score >= 70 && !frenzyMode){
     frenzyMode = true;
     enemySpeed = 7;
@@ -322,16 +345,10 @@ function gameLoop(){
   requestAnimationFrame(gameLoop);
 }
 
+// --- End game ---
 async function endGame(){
   clearInterval(spawnInterval);
-  const timeElapsed = (performance.now() - startTime)/1000;
-
-  await supabaseClient.from("invaders").insert({
-    name: currentPlayerName,
-    time: timeElapsed
-  });
-
-  alert(`Fine! Alla prossima 😎`);
+  alert("Fine! Alla prossima 😎");
 
   const nameSelect = document.getElementById("playerName");
   nameSelect.disabled = false;
@@ -344,6 +361,9 @@ async function endGame(){
   enemySpeed = 4;
   updateInfo();
 }
+
+// --- Carica nomi all'avvio ---
+loadPlayerNames();
 </script>
 
 </body>

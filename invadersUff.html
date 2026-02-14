@@ -130,7 +130,7 @@ let enemySpeed=4;
 // carica nomi dal file players.json
 let availableNames = [];
 const playerSelect = document.getElementById("playerName");
-fetch("players.json")
+fetch('players.json')
   .then(res=>res.json())
   .then(data=>{
     availableNames = data;

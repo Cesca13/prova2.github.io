@@ -49,17 +49,7 @@ button, select{
   body { font-size: 18px; }
   h1 { font-size: 28px; }
   #info { font-size: 24px; }
-  select, button {
-    font-size: 20px;         
-    padding: 15px 35px;      
-    min-width: 180px;        
-    height: 50px;            
-    border-radius: 8px;      
-    appearance: none;         
-    -webkit-appearance: none;
-    -moz-appearance: none;
-  }
-  select { text-align: center; }
+  select, button { font-size: 20px; padding: 15px 35px; min-width: 180px; height: 50px; border-radius: 8px; appearance: none; -webkit-appearance:none; -moz-appearance:none; text-align:center; }
 }
 </style>
 </head>
@@ -86,6 +76,7 @@ let score = 0;
 let startTime;
 let timerInterval;
 let spawnInterval;
+let currentPlayerId = null;
 let currentPlayerName = "";
 let spawnDelay = 500;
 let targetsPerSpawn = 2;
@@ -104,7 +95,7 @@ const badTargets = [
   'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/AM3.png'
 ];
 
-// --- Carica nomi disponibili dalla colonna ContiClick ---
+// --- Carica nomi dalla tabella players ---
 async function loadPlayerNames(){
   const select = document.getElementById("playerName");
   select.innerHTML = '<option value="">Scegli il tuo nome</option>';
@@ -122,38 +113,51 @@ async function loadPlayerNames(){
 
   players.forEach(p=>{
     const option = document.createElement('option');
-    option.value = p.id;
-    option.textContent = p.player;
+    option.value = p.id; // salviamo l'id per aggiornare la colonna ContiClick
+    option.textContent = p.player; // mostriamo il nome reale
     select.appendChild(option);
   });
 }
 
-// --- START GAME ---
+// --- Start Game ---
 async function startGame(){
   const nameSelect = document.getElementById("playerName");
-  currentPlayerName = nameSelect.value;
-
-  if(!currentPlayerName){
+  currentPlayerId = nameSelect.value;
+  if(!currentPlayerId){
     alert("Seleziona un nome prima di iniziare!");
     return;
   }
 
-  // aggiorna colonna ContiClick con data/ora corrente
+  // Recupera il nome reale del giocatore
+  const { data: playerData, error: playerError } = await supabaseClient
+    .from('players')
+    .select('player')
+    .eq('id', currentPlayerId)
+    .single();
+
+  if(playerError || !playerData){
+    console.error("Errore recuperando il nome del giocatore", playerError);
+    return;
+  }
+  currentPlayerName = playerData.player;
+
+  // Aggiorna colonna ContiClick con data/ora corrente
   const now = new Date().toISOString();
-  const { data, error } = await supabaseClient
+  const { error: updateError } = await supabaseClient
     .from('players')
     .update({ ContiClick: now })
-    .eq('id', currentPlayerName);
+    .eq('id', currentPlayerId);
 
-  if(error){
-    console.error("Errore aggiornando il record:", error);
+  if(updateError){
+    console.error("Errore aggiornando ContiClick", updateError);
     return;
   }
 
-  // rimuove il nome dalla dropdown
-  const optionToRemove = Array.from(nameSelect.options)
-    .find(opt => opt.value === currentPlayerName);
-  if(optionToRemove) optionToRemove.remove();
+  // Rimuove il nome dalla dropdown
+  const option = nameSelect.querySelector(`option[value="${currentPlayerId}"]`);
+  if(option) option.remove();
+  nameSelect.disabled = true;
+  document.querySelector("button").disabled = true;
 
   // --- Inizio del gioco ---
   score = 0;
@@ -164,9 +168,6 @@ async function startGame(){
 
   updateInfo();
 
-  nameSelect.disabled = true;
-  document.querySelector("button").disabled = true;
-
   timerInterval = setInterval(updateInfo, 200);
   spawnInterval = setInterval(dynamicSpawn, spawnDelay);
 }
@@ -176,7 +177,7 @@ function updateInfo(){
     `Punteggio: ${score} | Obiettivo: ${TARGET_SCORE}`;
 }
 
-// funzione dinamica di spawn: aumenta difficoltà con il punteggio
+// --- Spawn dinamico ---
 function dynamicSpawn(){
   for(let i=0; i<targetsPerSpawn; i++){
     createTarget();
@@ -243,6 +244,7 @@ async function endGame(){
 
   const duration = (performance.now() - startTime) / 1000;
 
+  // Salva punteggio nella tabella scores con il nome reale
   await supabaseClient.from("scores").insert({
     name: currentPlayerName,
     score: score,
@@ -252,6 +254,10 @@ async function endGame(){
   alert(`Fine! Grazie per aver giocato 🫶🏻`);
 
   const nameSelect = document.getElementById("playerName");
+  const optionToRemove = Array.from(nameSelect.options)
+    .find(opt => opt.value === currentPlayerId);
+  if(optionToRemove) optionToRemove.remove();
+
   nameSelect.value = "";
   nameSelect.disabled = false;
   document.querySelector("button").disabled = false;

@@ -71,7 +71,6 @@ button, select{
   margin:5px;
 }
 
-/* Touch controls */
 #controls{
   position:fixed;
   bottom:20px;
@@ -98,7 +97,6 @@ button, select{
   pointer-events:auto;
 }
 
-/* bottone fuoco al centro */
 #fire-btn{
   position:absolute;
   left:50%;
@@ -160,7 +158,7 @@ async function loadPlayerNames(){
   const { data: players, error } = await supabaseClient
     .from('players')
     .select('id, player')
-    .is('MorganInvaders', null);
+    .is('MorganInvaders', null); // seleziona solo chi non ha giocato
 
   if(error){
     console.error(error);
@@ -348,6 +346,16 @@ function gameLoop(){
 // --- End game ---
 async function endGame(){
   clearInterval(spawnInterval);
+
+  const timeElapsed = (performance.now() - startTime)/1000;
+
+  // salva su tabella invaders
+  await supabaseClient.from('invaders').insert({
+    name: currentPlayerId,
+    score: score,
+    time: timeElapsed
+  });
+
   alert("Fine! Alla prossima 😎");
 
   const nameSelect = document.getElementById("playerName");

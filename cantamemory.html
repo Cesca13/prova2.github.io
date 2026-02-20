@@ -48,13 +48,23 @@ select, button{
   gap:8px;
 }
 
+/* ===== CARD FIX DEFINITIVO TOUCH ===== */
+
 .card{
   position:relative;
   width:100%;
   padding-top:100%;
   perspective:800px;
-  touch-action: manipulation;
+  touch-action:manipulation;
   user-select:none;
+  transform:translateZ(0);
+  will-change:transform;
+}
+
+.inner,
+.front,
+.back{
+  pointer-events:none;   /* IMPORTANTISSIMO */
 }
 
 .inner{
@@ -77,7 +87,9 @@ select, button{
   backface-visibility:hidden;
 }
 
-.front{ background:#444; }
+.front{
+  background:#444;
+}
 
 .back{
   transform:rotateY(180deg);
@@ -104,12 +116,12 @@ select, button{
 
 <script>
 const supabaseClient = supabase.createClient(
-  "https://xloiaewcuwelufblecxf.supabase.co",
-  "sb_publishable_SlM0ePMXPgoJjC47P8o-IQ_w6iEn_OP"
+  "https://TUO-PROGETTO.supabase.co",
+  "TUA-CHIAVE-PUBBLICA"
 );
 
-const game = document.getElementById("game");
-const info = document.getElementById("info");
+const game=document.getElementById("game");
+const info=document.getElementById("info");
 
 let currentPlayerId=null;
 let currentPlayerName="";
@@ -145,9 +157,10 @@ function shuffle(array){
   return array.sort(()=>Math.random()-0.5);
 }
 
-/* LOAD PLAYERS */
+/* ===== LOAD PLAYERS ===== */
+
 async function loadPlayers(){
-  const {data,error} = await supabaseClient
+  const {data,error}=await supabaseClient
     .from("players")
     .select("id, player")
     .is("memory", null);
@@ -156,7 +169,7 @@ async function loadPlayers(){
   select.innerHTML='<option value="">Scegli nome</option>';
 
   if(error){
-    select.innerHTML='<option>Errore</option>';
+    select.innerHTML='<option>Errore caricamento</option>';
     return;
   }
 
@@ -170,13 +183,14 @@ async function loadPlayers(){
 
 loadPlayers();
 
-/* START */
+/* ===== START ===== */
+
 document.getElementById("startBtn").addEventListener("click", async ()=>{
   const select=document.getElementById("playerSelect");
   currentPlayerId=select.value;
   if(!currentPlayerId){ alert("Seleziona un nome"); return; }
 
-  const {data} = await supabaseClient
+  const {data}=await supabaseClient
     .from("players")
     .select("player")
     .eq("id",currentPlayerId)
@@ -186,16 +200,18 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 
   await supabaseClient
     .from("players")
-    .update({ memory: new Date().toISOString() })
+    .update({ memory:new Date().toISOString() })
     .eq("id",currentPlayerId);
 
-  document.getElementById("startBtn").style.display="none";
   select.style.display="none";
+  document.getElementById("startBtn").style.display="none";
   document.getElementById("resetBtn").style.display="inline-block";
   game.style.display="grid";
 
   startGame();
 });
+
+/* ===== GAME ===== */
 
 function createBoard(){
   const size=levels[level-1].size;
@@ -212,7 +228,8 @@ function createBoard(){
 
   doubled.forEach(img=>{
     const card=document.createElement("div");
-    card.classList.add("card");
+    card.className="card";
+    card.dataset.image=img;
 
     card.innerHTML=`
       <div class="inner">
@@ -220,16 +237,16 @@ function createBoard(){
         <div class="back" style="background-image:url('${img}')"></div>
       </div>`;
 
-    card.addEventListener("pointerdown",(e)=>{
-      e.preventDefault();
-      flipCard(card,img);
-    });
+    card.addEventListener("pointerdown", handleCardClick);
 
     game.appendChild(card);
   });
 }
 
-function flipCard(card,img){
+function handleCardClick(e){
+  const card=e.currentTarget;
+  const img=card.dataset.image;
+
   if(isProcessing) return;
   if(card.classList.contains("flip")) return;
   if(flipped.length===2) return;
@@ -266,8 +283,8 @@ async function checkLevelComplete(){
       const totalTime=Math.floor((Date.now()-startTime)/1000);
 
       await supabaseClient.from("memorySing").insert({
-        name: currentPlayerName,
-        time: totalTime
+        name:currentPlayerName,
+        time:totalTime
       });
 
       alert("Completato! Tempo: "+totalTime+"s");

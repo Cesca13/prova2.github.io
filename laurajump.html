@@ -166,24 +166,41 @@ loadPlayers();
 document.getElementById("startBtn").addEventListener("click", async ()=>{
   const select=document.getElementById("playerSelect");
   currentPlayerId=select.value;
+
   if(!currentPlayerId){
     alert("Seleziona un nome!");
     return;
   }
 
-  const {data}=await supabaseClient
+  // Recupero nome giocatore
+  const {data, error: err1}=await supabaseClient
     .from("players")
     .select("player")
     .eq("id", currentPlayerId)
     .single();
 
+  if(err1){
+    alert("Errore caricamento giocatore");
+    return;
+  }
+
   currentPlayerName=data.player;
 
-  await supabaseClient
+  // 🔥 SALVATAGGIO DATA ORA NELLA COLONNA LauraJump
+  const { error: err2 } = await supabaseClient
     .from("players")
-    .update({ LauraJump: new Date().toISOString() })
+    .update({ 
+      LauraJump: new Date().toISOString() 
+    })
     .eq("id", currentPlayerId);
 
+  if(err2){
+    alert("Errore aggiornamento LauraJump");
+    console.log(err2);
+    return;
+  }
+
+  // Avvio gioco
   select.style.display="none";
   document.getElementById("startBtn").style.display="none";
   document.getElementById("game").style.display="block";

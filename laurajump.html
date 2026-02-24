@@ -17,7 +17,7 @@ body{
   overflow-x:hidden;
 }
 
-#game{
+#game{ 
   position:relative;
   width:100%;
   max-width:600px;
@@ -27,11 +27,12 @@ body{
   border-bottom:4px solid #2e7d32;
   background:#87ceeb;
 }
-
+  
 #player{
   position:absolute;
   bottom:0;
-  left:80px;              /* 🔥 spostato a sinistra */
+  left:50%;
+  transform:translateX(-50%);
   width:64px;
   height:96px;
   background:url("https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/laura.png") no-repeat;
@@ -69,6 +70,14 @@ select, button{
   font-size:18px;
   margin:5px;
 }
+
+@media (max-width:600px){
+  #jumpBtn{
+    width:90%;
+    font-size:28px;
+    padding:25px;
+  }
+}
 </style>
 </head>
 
@@ -100,7 +109,10 @@ let currentPlayerName="";
 let startTime;
 let gameRunning=false;
 
+/* ========================= */
 /* LOAD PLAYERS */
+/* ========================= */
+
 async function loadPlayers(){
 const select=document.getElementById("playerSelect");
 select.innerHTML='<option value="">Scegli il tuo nome</option>';
@@ -118,9 +130,13 @@ option.textContent=p.player;
 select.appendChild(option);
 });
 }
+
 loadPlayers();
 
+/* ========================= */
 /* START */
+/* ========================= */
+
 document.getElementById("startBtn").addEventListener("click", async ()=>{
 
 const select=document.getElementById("playerSelect");
@@ -166,7 +182,9 @@ gameRunning=true;
 requestAnimationFrame(update);
 });
 
+/* ========================= */
 /* GAME ENGINE */
+/* ========================= */
 
 const player=document.getElementById("player");
 const game=document.getElementById("game");
@@ -222,6 +240,7 @@ notesArray.push(note);
 /* UPDATE LOOP */
 
 function update(){
+
 if(!gameRunning) return;
 
 let bottom=parseFloat(player.style.bottom||0);
@@ -237,7 +256,7 @@ isGrounded=true;
 player.style.bottom=bottom+"px";
 const p=player.getBoundingClientRect();
 
-/* SHEEP */
+/* COLLISION SHEEP */
 sheepArray.forEach((sheep,i)=>{
 let left=parseFloat(sheep.style.left);
 left-=speed;
@@ -258,7 +277,7 @@ sheepArray.splice(i,1);
 }
 });
 
-/* NOTES */
+/* COLLISION NOTES */
 notesArray.forEach((note,i)=>{
 let left=parseFloat(note.style.left);
 left-=speed;
@@ -271,6 +290,7 @@ note.remove();
 notesArray.splice(i,1);
 updateInfo();
 
+/* SPEED PROGRESSION */
 if(points>=lastSpeedMilestone+100 && speed<maxSpeed){
 speed+=0.5;
 lastSpeedMilestone+=100;
@@ -295,6 +315,7 @@ info.innerText=`Vite: ${lives} | Punti: ${points}`;
 /* GAME OVER */
 
 async function endGame(){
+
 gameRunning=false;
 
 const duration=(performance.now()-startTime)/1000;
@@ -305,7 +326,7 @@ score: points,
 time: duration
 });
 
-alert("Game Over! A domani 😎);
+alert("Game Over! Punti: "+points);
 location.reload();
 }
 </script>

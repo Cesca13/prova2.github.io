@@ -44,13 +44,6 @@ button, select{
   font-size:18px;
   margin:5px;
 }
-
-@media (max-width: 600px) {
-  body { font-size: 18px; }
-  h1 { font-size: 28px; }
-  #info { font-size: 24px; }
-  select, button { font-size: 20px; padding: 15px 35px; min-width: 180px; height: 50px; border-radius: 8px; appearance: none; -webkit-appearance:none; -moz-appearance:none; text-align:center; }
-}
 </style>
 </head>
 <body>
@@ -71,6 +64,16 @@ const supabaseClient = supabase.createClient(
   "https://xloiaewcuwelufblecxf.supabase.co",
   "sb_publishable_SlM0ePMXPgoJjC47P8o-IQ_w6iEn_OP"
 );
+
+/* ================= DEVICE ID ================= */
+
+// genera device_id una sola volta
+if(!localStorage.getItem("device_id")){
+  localStorage.setItem("device_id", crypto.randomUUID());
+}
+const deviceId = localStorage.getItem("device_id");
+
+/* ================================================= */
 
 let score = 0;
 let startTime;
@@ -95,7 +98,8 @@ const badTargets = [
   'https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/AM3.png'
 ];
 
-// --- Carica nomi dalla tabella players ---
+/* ================= LOAD PLAYERS ================= */
+
 async function loadPlayerNames(){
   const select = document.getElementById("playerName");
   select.innerHTML = '<option value="">Scegli il tuo nome</option>';
@@ -103,7 +107,8 @@ async function loadPlayerNames(){
   const { data: players, error } = await supabaseClient
     .from('players')
     .select('id, player')
-    .is('ContiClick', null);
+    .is('ContiClick', null)
+    .order('player', { ascending: true });
 
   if(error){
     console.error(error);
@@ -113,53 +118,39 @@ async function loadPlayerNames(){
 
   players.forEach(p=>{
     const option = document.createElement('option');
-    option.value = p.id; // salviamo l'id per aggiornare la colonna ContiClick
-    option.textContent = p.player; // mostriamo il nome reale
+    option.value = p.id;
+    option.textContent = p.player;
     select.appendChild(option);
   });
 }
 
-// --- Start Game ---
+/* ================= START GAME ================= */
+
 async function startGame(){
   const nameSelect = document.getElementById("playerName");
   currentPlayerId = nameSelect.value;
+
   if(!currentPlayerId){
     alert("Seleziona un nome prima di iniziare!");
     return;
   }
 
-  // Recupera il nome reale del giocatore
-  const { data: playerData, error: playerError } = await supabaseClient
+  const { data: playerData } = await supabaseClient
     .from('players')
     .select('player')
     .eq('id', currentPlayerId)
     .single();
 
-  if(playerError || !playerData){
-    console.error("Errore recuperando il nome del giocatore", playerError);
-    return;
-  }
   currentPlayerName = playerData.player;
 
-  // Aggiorna colonna ContiClick con data/ora corrente
-  const now = new Date().toISOString();
-  const { error: updateError } = await supabaseClient
+  await supabaseClient
     .from('players')
-    .update({ ContiClick: now })
+    .update({ ContiClick: new Date().toISOString() })
     .eq('id', currentPlayerId);
 
-  if(updateError){
-    console.error("Errore aggiornando ContiClick", updateError);
-    return;
-  }
-
-  // Rimuove il nome dalla dropdown
-  const option = nameSelect.querySelector(`option[value="${currentPlayerId}"]`);
-  if(option) option.remove();
   nameSelect.disabled = true;
   document.querySelector("button").disabled = true;
 
-  // --- Inizio del gioco ---
   score = 0;
   startTime = performance.now();
   spawnDelay = 500;
@@ -172,12 +163,15 @@ async function startGame(){
   spawnInterval = setInterval(dynamicSpawn, spawnDelay);
 }
 
+/* ================= INFO ================= */
+
 function updateInfo(){
   document.getElementById("info").innerText =
     `Punteggio: ${score} | Obiettivo: ${TARGET_SCORE}`;
 }
 
-// --- Spawn dinamico ---
+/* ================= SPAWN ================= */
+
 function dynamicSpawn(){
   for(let i=0; i<targetsPerSpawn; i++){
     createTarget();
@@ -212,8 +206,6 @@ function createTarget(){
 
   target.style.backgroundImage = `url('${img}')`;
   target.style.backgroundSize = "cover";
-  target.style.backgroundPosition = "center";
-  target.style.backgroundRepeat = "no-repeat";
 
   const x = Math.random() * (game.clientWidth - 100);
   const y = Math.random() * (game.clientHeight - 100);
@@ -222,15 +214,13 @@ function createTarget(){
 
   target.addEventListener("pointerdown", (e)=>{
     e.preventDefault();
-    if(isGood){
-      score += 10;
-    } else {
-      score -= 15;
-    }
+    score += isGood ? 10 : -15;
     updateInfo();
+
     if(score >= TARGET_SCORE){
       endGame();
     }
+
     target.remove();
   });
 
@@ -238,35 +228,30 @@ function createTarget(){
   setTimeout(()=> target.remove(), 2000);
 }
 
+/* ================= END GAME ================= */
+
 async function endGame(){
   clearInterval(timerInterval);
   clearInterval(spawnInterval);
 
   const duration = (performance.now() - startTime) / 1000;
 
-  // Salva punteggio nella tabella conticlick con il nome reale
+  // SALVATAGGIO CON DEVICE ID
   await supabaseClient.from("conticlick").insert({
     name: currentPlayerName,
     score: score,
-    duration: duration
+    duration: duration,
+    device: deviceId
   });
 
-  alert(`Fine! Grazie per aver giocato 🫶🏻`);
-
-  const nameSelect = document.getElementById("playerName");
-  const optionToRemove = Array.from(nameSelect.options)
-    .find(opt => opt.value === currentPlayerId);
-  if(optionToRemove) optionToRemove.remove();
-
-  nameSelect.value = "";
-  nameSelect.disabled = false;
-  document.querySelector("button").disabled = false;
+  alert("Fine! Grazie per aver giocato 😎");
 
   document.getElementById("game").innerHTML = "";
+  document.getElementById("playerName").disabled = false;
+  document.querySelector("button").disabled = false;
   updateInfo();
 }
 
-// --- Carica nomi all'avvio ---
 loadPlayerNames();
 </script>
 

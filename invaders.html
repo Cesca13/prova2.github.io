@@ -369,13 +369,28 @@ async function endGame(){
   clearInterval(spawnInterval);
   const timeElapsed = (performance.now() - startTime)/1000;
 
-  /* ===== INSERT INVADERS CON DEVICE ===== */
-  await supabaseClient.from('invaders').insert({
+   /* ===== INSERT INVADERS CON DEVICE + CONTROLLO ===== */
+    const { data, error } = await supabaseClient
+  .from('invaders')
+  .insert({
     name: currentPlayerName,
     time: timeElapsed,
     device: deviceId
-  });
-  /* ====================================== */
+  })
+  .select();
+
+if (error) {
+  alert("❌ Errore nel salvataggio");
+  return;
+}
+
+if (!data || data.length === 0) {
+  alert("⚠️ Salvataggio non confermato.");
+  return;
+}
+
+alert("✅ Punteggio salvato correttamente!");
+/* =================================================== */
 
   alert(`Fine! Alla prossima 😎`);
 

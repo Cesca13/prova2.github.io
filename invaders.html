@@ -210,6 +210,7 @@ async function startGame(){
 
   score = 0;
   updateInfo();
+  enemySpeed = 4 + Math.floor(score / 30);
   startTime = performance.now();
 
   game = document.getElementById("game");

@@ -131,8 +131,14 @@ let timerInterval;
 let lockBoard=false;
 
 const levels=[4,6,8];
-const images=Array.from({length:32}, (_,i)=>`https://picsum.photos/200?random=${i}`);
+const baseUrl = "https://xloiaewcuwelufblecxf.supabase.co/storage/v1/object/public/BFRA/";
 
+const images = [];
+
+for(let i = 1; i <= 32; i++){
+  images.push(baseUrl + i + ".png");
+}
+  
 function shuffle(array){
   for(let i=array.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));

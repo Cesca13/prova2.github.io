@@ -36,10 +36,6 @@ select, button{
   font-size:18px;
 }
 
-#resetBtn{
-  display:none;
-}
-
 /* GRID DEFINITA QUI */
 #game{
   width:95vw;
@@ -105,7 +101,6 @@ select, button{
     <option>Caricamento...</option>
   </select>
   <button id="startBtn">START</button>
-  <button id="resetBtn">RESET</button>
 </div>
 
 <div id="info">Livello: 1 | Tempo: 0s</div>
@@ -119,7 +114,6 @@ const supabaseClient = supabase.createClient(
 
 const game=document.getElementById("game");
 const info=document.getElementById("info");
-const resetBtn=document.getElementById("resetBtn");
 
 let currentPlayerId=null;
 let currentPlayerName="";
@@ -150,8 +144,7 @@ function shuffle(array){
 async function loadPlayers(){
   const {data,error}=await supabaseClient
     .from("players")
-    .select("id, player")
-    .is("memory", null);
+    .select("id, player");
 
   const select=document.getElementById("playerSelect");
   select.innerHTML='<option value="">Scegli nome</option>';
@@ -194,7 +187,6 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 
   select.style.display="none";
   document.getElementById("startBtn").style.display="none";
-  resetBtn.style.display="inline-block";
   game.style.display="grid";
 
   startGame();
@@ -295,12 +287,7 @@ function startGame(){
   timerInterval=setInterval(updateTimer,1000);
   createBoard();
 }
-
-resetBtn.addEventListener("click", ()=>{
-  level=1;
-  clearInterval(timerInterval);
-  startGame();
-});
+  
 </script>
 
 </body>

@@ -36,7 +36,6 @@ select, button{
   font-size:18px;
 }
 
-/* GRID DEFINITA QUI */
 #game{
   width:95vw;
   max-width:600px;
@@ -44,8 +43,6 @@ select, button{
   display:grid;
   gap:8px;
 }
-
-/* ===== CARD FIX TOUCH ===== */
 
 .card{
   position:relative;
@@ -111,6 +108,18 @@ const supabaseClient = supabase.createClient(
   "https://xloiaewcuwelufblecxf.supabase.co",
   "sb_publishable_SlM0ePMXPgoJjC47P8o-IQ_w6iEn_OP"
 );
+
+/* ================= DEVICE ID ================= */
+function getDeviceId(){
+  let deviceId = localStorage.getItem("device_id");
+  if(!deviceId){
+    deviceId = crypto.randomUUID();
+    localStorage.setItem("device_id", deviceId);
+  }
+  return deviceId;
+}
+const deviceId = getDeviceId();
+/* ============================================= */
 
 const game=document.getElementById("game");
 const info=document.getElementById("info");
@@ -184,6 +193,15 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
     .from("players")
     .update({ memory:new Date().toISOString() })
     .eq("id",currentPlayerId);
+
+  /* ========== LOG START MEMORY ========== */
+  await supabaseClient.from("log").insert({
+    created_at: new Date().toISOString(),
+    gioco: "memory",
+    player: currentPlayerName,
+    device: deviceId
+  });
+  /* ====================================== */
 
   select.style.display="none";
   document.getElementById("startBtn").style.display="none";
@@ -265,7 +283,8 @@ async function checkLevelComplete(){
 
       await supabaseClient.from("memorySing").insert({
         name:currentPlayerName,
-        time:totalTime
+        time:totalTime,
+        device: deviceId
       });
 
       alert("Completato! 🎆");

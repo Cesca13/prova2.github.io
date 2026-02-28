@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Votazione</title>
+  <script src="https://xloiaewcuwelufblecxf.supabase.co"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+    }
+    select, button {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0 16px 0;
+    }
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Votazione</h2>
+
+<label>Seleziona il tuo nome:</label>
+<select id="voterSelect">
+  <option value="">-- Seleziona --</option>
+</select>
+
+<div id="voteSection" style="display:none;">
+  <label>3 punti:</label>
+  <select id="threePoints"></select>
+
+  <label>2 punti:</label>
+  <select id="twoPoints"></select>
+
+  <label>1 punto:</label>
+  <select id="onePoint"></select>
+
+  <button onclick="submitVote()">Invia voto</button>
+</div>
+
+<script>
+  const supabase = window.supabase.createClient(
+    "YOUR_SUPABASE_URL",
+    "YOUR_SUPABASE_ANON_KEY"
+  );
+
+  let players = [];
+  let selectedVoter = null;
+
+  function getDeviceId() {
+    let deviceId = localStorage.getItem("device_id");
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem("device_id", deviceId);
+    }
+    return deviceId;
+  }
+
+  async function loadPlayers() {
+    const { data, error } = await supabase
+      .from("players")
+      .select("*")
+      .order("name");
+
+    if (error) {
+      alert("Errore caricamento giocatori");
+      return;
+    }
+
+    players = data;
+
+    const voterSelect = document.getElementById("voterSelect");
+    players.forEach(p => {
+      voterSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    });
+  }
+
+  document.getElementById("voterSelect").addEventListener("change", async (e) => {
+    selectedVoter = e.target.value;
+
+    if (!selectedVoter) return;
+
+    // Controllo se ha già votato
+    const { data } = await supabase
+      .from("votes")
+      .select("id")
+      .eq("voter_id", selectedVoter)
+      .maybeSingle();
+
+    if (data) {
+      alert("Hai già votato.");
+      document.getElementById("voteSection").style.display = "none";
+      return;
+    }
+
+    document.getElementById("voteSection").style.display = "block";
+    populateVoteDropdowns();
+  });
+
+  function populateVoteDropdowns() {
+    const filtered = players.filter(p => p.id != selectedVoter);
+
+    ["threePoints", "twoPoints", "onePoint"].forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = "";
+      filtered.forEach(p => {
+        select.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+      });
+    });
+  }
+
+  async function submitVote() {
+    const three = document.getElementById("threePoints").value;
+    const two = document.getElementById("twoPoints").value;
+    const one = document.getElementById("onePoint").value;
+
+    if (!three || !two || !one) {
+      alert("Completa tutte le scelte.");
+      return;
+    }
+
+    if (three === two || three === one || two === one) {
+      alert("Non puoi votare la stessa persona più volte.");
+      return;
+    }
+
+    const deviceId = getDeviceId();
+
+    const { error } = await supabase.from("votes").insert([{
+      voter_id: selectedVoter,
+      three_points_id: three,
+      two_points_id: two,
+      one_point_id: one,
+      device: deviceId
+    }]);
+
+    if (error) {
+      alert("Errore: probabilmente hai già votato o il device è bloccato.");
+      return;
+    }
+
+    alert("Voto registrato correttamente!");
+    document.getElementById("voteSection").style.display = "none";
+  }
+
+  loadPlayers();
+</script>
+
+</body>
+</html>

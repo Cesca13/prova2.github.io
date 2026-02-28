@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Votazione</title>
-  <script src="https://xloiaewcuwelufblecxf.supabase.co"></script>
+  <!-- Libreria ufficiale Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -43,14 +44,16 @@
 </div>
 
 <script>
+  // Inizializza Supabase
   const supabase = window.supabase.createClient(
-    "YOUR_SUPABASE_URL",
-    "YOUR_SUPABASE_ANON_KEY"
+    "https://xloiaewcuwelufblecxf.supabase.co",      // es. https://xloiaewcuwelufblecxf.supabase.co
+    "sb_publishable_SlM0ePMXPgoJjC47P8o-IQ_w6iEn_OP"  // anon public key
   );
 
   let players = [];
   let selectedVoter = null;
 
+  // Genera o legge un device ID unico per il browser
   function getDeviceId() {
     let deviceId = localStorage.getItem("device_id");
     if (!deviceId) {
@@ -60,6 +63,7 @@
     return deviceId;
   }
 
+  // Carica tutti i giocatori dalla tabella players
   async function loadPlayers() {
     const { data, error } = await supabase
       .from("players")
@@ -79,12 +83,13 @@
     });
   }
 
+  // Al cambio del selettore del votante
   document.getElementById("voterSelect").addEventListener("change", async (e) => {
     selectedVoter = e.target.value;
 
     if (!selectedVoter) return;
 
-    // Controllo se ha già votato
+    // Controlla se ha già votato
     const { data } = await supabase
       .from("votes")
       .select("id")
@@ -101,6 +106,7 @@
     populateVoteDropdowns();
   });
 
+  // Popola le dropdown dei voti escludendo il votante stesso
   function populateVoteDropdowns() {
     const filtered = players.filter(p => p.id != selectedVoter);
 
@@ -113,6 +119,7 @@
     });
   }
 
+  // Invia il voto a Supabase
   async function submitVote() {
     const three = document.getElementById("threePoints").value;
     const two = document.getElementById("twoPoints").value;
